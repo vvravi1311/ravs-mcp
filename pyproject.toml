@@ -9,4 +9,6 @@ dependencies = [
     "langchain>=1.2.9",
     "langchain-openai>=1.1.7",
     "langchain-pinecone>=0.2.13",
+    "mcp>=1.26.0",
+    "mcp-server>=0.1.4",
 ]
