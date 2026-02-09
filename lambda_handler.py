@@ -1,8 +1,10 @@
 import json
 import base64
 import traceback
+from app.rag_tools import retrieve_context
 
 def handler(event, context):
+    req_id = None
     try:
         # Handle OPTIONS for CORS
         if event.get('httpMethod') == 'OPTIONS':
@@ -100,21 +102,24 @@ def handler(event, context):
             tool_name = params.get('name')
             arguments = params.get('arguments', {})
 
+            print("***********************************************************   in tool calls   **********************")
             if tool_name == 'retrieve_documents':
-                # to mock local testing
-                import os
-                if os.environ.get('AWS_SAM_LOCAL'):
-                    serialized = "Source: Mock Document\n\nContent: This is a mock response for testing. Plan N covers basic benefits."
-                else:
-                    from app.rag_tools import retrieve_context
-                    serialized, docs = retrieve_context(arguments['query'])
-
+                import time
+                start = time.time()
+                print("***********************************************************   in retrieve_documents   **********")
+                serialized, docs = retrieve_context(arguments['query'])
+                print(f"*** retrieve_context took {time.time() - start:.2f}s ***")
+                print("***********************************************************   docs retreived   **********")
+                
+                docs_dict = [{"page_content": doc.page_content, "metadata": doc.metadata} for doc in docs]
+                
                 response = {
                     "jsonrpc": "2.0",
                     "id": req_id,
                     "result": {
                         "content": [
-                            {"type": "text", "text": serialized}
+                            {"type": "text", "text": serialized},
+                            {"type": "text", "text": json.dumps(docs_dict, indent=2)}
                         ]
                     }
                 }
@@ -141,7 +146,7 @@ def handler(event, context):
     except Exception as e:
         error_response = {
             "jsonrpc": "2.0",
-            "id": None,
+            "id": req_id,
             "error": {
                 "code": -32001,
                 "message": str(e),

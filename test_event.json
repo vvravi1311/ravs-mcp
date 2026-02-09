@@ -1,0 +1,10 @@
+{
+  "httpMethod": "POST",
+  "requestContext": {
+    "apiId": "test123"
+  },
+  "headers": {
+    "x-api-key": "test-key"
+  },
+  "body": "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"retrieve_documents\",\"arguments\":{\"query\":\"plan N\"}}}"
+}
