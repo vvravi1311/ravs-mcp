@@ -1,42 +1,80 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
+Description: MCP Server with Lambda and API Gateway
+
+Parameters:
+  SecretName:
+    Type: String
+    Default: 'my-agent'
+
+Globals:
+  Function:
+    Timeout: 120
+    MemorySize: 1024
+    Runtime: python3.13
 
 Resources:
-  MCPFunction:
+  MCPServerFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: lambda_handler.handler
-      Runtime: python3.13
       CodeUri: .
-      Timeout: 60
-      MemorySize: 1024
+      Handler: lambda_handler.lambda_handler
+      Architectures:
+        - x86_64
+      EphemeralStorage:
+        Size: 1024
       Policies:
-        - AWSSecretsManagerGetSecretValuePolicy:
-            SecretArn: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:my-agent-*'
-      Environment:
-        Variables:
-          PYTHONPATH: /var/task
+        - Statement:
+          - Effect: Allow
+            Action: secretsmanager:GetSecretValue
+            Resource: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${SecretName}*'
       Events:
-        ApiEvent:
+        MCPApi:
           Type: Api
           Properties:
             Path: /mcp
             Method: post
-        OptionsEvent:
-          Type: Api
-          Properties:
-            Path: /mcp
-            Method: options
+            Auth:
+              ApiKeyRequired: true
+    Metadata:
+      BuildMethod: python3.13
+      BuildArchitecture: x86_64
 
-Metadata:
-  AWS::ServerlessRepo::Application:
-    Name: ravs-mcp
-    Description: MCP Server
-    Author: User
-    SpdxLicenseId: MIT
-    LicenseUrl: LICENSE
-    ReadmeUrl: README.md
-    Labels: ['mcp']
-    HomePageUrl: https://github.com/user/repo
-    SemanticVersion: 0.0.1
-    SourceCodeUrl: https://github.com/user/repo
+  MCPApiKey:
+    Type: AWS::ApiGateway::ApiKey
+    DependsOn:
+      - ServerlessRestApiProdStage
+    Properties:
+      Name: MCPServerApiKey
+      Enabled: true
+
+  MCPUsagePlan:
+    Type: AWS::ApiGateway::UsagePlan
+    DependsOn:
+      - ServerlessRestApiProdStage
+    Properties:
+      UsagePlanName: MCPServerUsagePlan
+      ApiStages:
+        - ApiId: !Ref ServerlessRestApi
+          Stage: Prod
+      Throttle:
+        RateLimit: 100
+        BurstLimit: 200
+
+  MCPUsagePlanKey:
+    Type: AWS::ApiGateway::UsagePlanKey
+    Properties:
+      KeyId: !Ref MCPApiKey
+      KeyType: API_KEY
+      UsagePlanId: !Ref MCPUsagePlan
+
+Outputs:
+  MCPApi:
+    Description: API Gateway endpoint URL
+    Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/mcp'
+  MCPServerFunction:
+    Description: Lambda Function ARN
+    Value: !GetAtt MCPServerFunction.Arn
+  MCPApiKeyId:
+    Description: API Key ID (use AWS CLI to get the key value)
+    Value: !Ref MCPApiKey

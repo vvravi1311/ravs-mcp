@@ -3,7 +3,7 @@ import base64
 import traceback
 from app.rag_tools import retrieve_context
 
-def handler(event, context):
+def lambda_handler(event, context):
     req_id = None
     try:
         # Handle OPTIONS for CORS
