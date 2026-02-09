@@ -1,74 +1,156 @@
 import json
 import base64
+import traceback
 
 def handler(event, context):
-    """Lambda handler for MCP server via API Gateway"""
     try:
+        # Handle OPTIONS for CORS
+        if event.get('httpMethod') == 'OPTIONS':
+            return {
+                'statusCode': 200,
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type, x-api-key'
+                },
+                'body': json.dumps({})
+            }
+
         # Ensure request is from API Gateway
         request_context = event.get('requestContext')
         if not request_context or 'apiId' not in request_context:
             return {
-                'statusCode': 403,
-                'body': json.dumps({'error': 'Direct invocation not allowed'})
+                "statusCode": 403,
+                "headers": {"Content-Type": "application/json"},
+                "body": json.dumps({"error": "Direct invocation not allowed"})
             }
 
         # Validate API Key
-        api_key = event.get('headers', {}).get('x-api-key')
+        headers = event.get('headers', {})
+        headers_lower = {k.lower(): v for k, v in headers.items()}
+        api_key = headers_lower.get("x-api-key")
         if not api_key:
             return {
-                'statusCode': 401,
-                'body': json.dumps({'error': 'API key required'})
+                "statusCode": 401,
+                "headers": {"Content-Type": "application/json"},
+                "body": json.dumps({"error": "API key required"})
             }
 
-        # Parse MCP request from API Gateway
+        # Parse MCP request
         body = event.get('body', '{}')
         if event.get('isBase64Encoded'):
             body = base64.b64decode(body).decode('utf-8')
 
         request = json.loads(body)
         method = request.get('method')
+        req_id = request.get('id')
 
-        # Handle MCP protocol methods
-        if method == 'tools/list':
+        # MCP: initialize
+        if method == 'initialize':
+            response = {
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "result": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {
+                        "tools": {}
+                    },
+                    "serverInfo": {
+                        "name": "ravs-mcp",
+                        "version": "0.1.0"
+                    }
+                }
+            }
             return {
-                'statusCode': 200,
-                'body': json.dumps({
-                    'tools': [{
-                        'name': 'retrieve_documents',
-                        'description': 'Retrieve relevant documentation to help answer answers Insurance agents\' queries about Real-Time clause and Benefit lookup',
-                        'inputSchema': {
-                            'type': 'object',
-                            'properties': {
-                                'query': {'type': 'string'}
-                            },
-                            'required': ['query']
-                        }
-                    }]
-                })
+                "statusCode": 200,
+                "headers": {"Content-Type": "application/json"},
+                "body": json.dumps(response)
             }
 
+        # MCP: tools/list
+        if method == 'tools/list':
+            response = {
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "result": {
+                    "tools": [{
+                        "name": "retrieve_documents",
+                        "description": "Retrieve relevant documentation to help answer Insurance agents queries about Real-Time clause and Benefit lookup",
+                        "inputSchema": {
+                            "type": "object",
+                            "properties": {
+                                "query": {"type": "string"}
+                            },
+                            "required": ["query"]
+                        }
+                    }]
+                }
+            }
+
+            return {
+                "statusCode": 200,
+                "headers": {"Content-Type": "application/json"},
+                "body": json.dumps(response)
+            }
+
+        # MCP: tools/call
         elif method == 'tools/call':
             params = request.get('params', {})
             tool_name = params.get('name')
             arguments = params.get('arguments', {})
 
             if tool_name == 'retrieve_documents':
-                from app.rag_tools import retrieve_context
-                serialized, docs = retrieve_context(arguments['query'])
-                return {
-                    'statusCode': 200,
-                    'body': json.dumps({
-                        'content': [{'type': 'text', 'text': serialized}]
-                    })
+                # to mock local testing
+                import os
+                if os.environ.get('AWS_SAM_LOCAL'):
+                    serialized = "Source: Mock Document\n\nContent: This is a mock response for testing. Plan N covers basic benefits."
+                else:
+                    from app.rag_tools import retrieve_context
+                    serialized, docs = retrieve_context(arguments['query'])
+
+                response = {
+                    "jsonrpc": "2.0",
+                    "id": req_id,
+                    "result": {
+                        "content": [
+                            {"type": "text", "text": serialized}
+                        ]
+                    }
                 }
 
+                return {
+                    "statusCode": 200,
+                    "headers": {"Content-Type": "application/json"},
+                    "body": json.dumps(response)
+                }
+
+        # Unsupported method
+        error_response = {
+            "jsonrpc": "2.0",
+            "id": req_id,
+            "error": {"code": -32601, "message": "Unsupported method"}
+        }
+
         return {
-            'statusCode': 400,
-            'body': json.dumps({'error': 'Unsupported method'})
+            "statusCode": 200,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps(error_response)
         }
 
     except Exception as e:
+        error_response = {
+            "jsonrpc": "2.0",
+            "id": None,
+            "error": {
+                "code": -32001,
+                "message": str(e),
+                "data": traceback.format_exc()
+            }
+        }
+
         return {
-            'statusCode': 500,
-            'body': json.dumps({'error': str(e)})
+            "statusCode": 200,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps(error_response)
         }

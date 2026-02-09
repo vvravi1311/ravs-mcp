@@ -1,0 +1,38 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Resources:
+  MCPFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: lambda_handler.handler
+      Runtime: python3.13
+      CodeUri: .
+      Timeout: 30
+      Environment:
+        Variables:
+          PYTHONPATH: /var/task
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /mcp
+            Method: post
+        OptionsEvent:
+          Type: Api
+          Properties:
+            Path: /mcp
+            Method: options
+
+Metadata:
+  AWS::ServerlessRepo::Application:
+    Name: ravs-mcp
+    Description: MCP Server
+    Author: User
+    SpdxLicenseId: MIT
+    LicenseUrl: LICENSE
+    ReadmeUrl: README.md
+    Labels: ['mcp']
+    HomePageUrl: https://github.com/user/repo
+    SemanticVersion: 0.0.1
+    SourceCodeUrl: https://github.com/user/repo

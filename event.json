@@ -1,0 +1,11 @@
+{
+  "requestContext": {
+    "apiId": "test-api"
+  },
+  "headers": {
+    "X-Api-Key": "test-key",
+    "x-api-key": "test-key"
+  },
+  "body": "{\"jsonrpc\": \"2.0\", \"id\": 1, \"method\": \"tools/list\"}",
+  "isBase64Encoded": false
+}
