@@ -1,0 +1,299 @@
+===========================================
+MCP Tool Test Cases for evaluate_for_underwriting
+===========================================
+
+TEST CASE 1: Open Enrollment Scenario (R-100)
+----------------------------------------------
+Description: Applicant turned 65 and enrolled in Part B, applying within 6-month open enrollment window
+Expected Result: ACCEPT_NO_UW - No underwriting required
+
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "evaluate_for_underwriting",
+    "arguments": {
+      "request": {
+        "application": {
+          "applicationId": "APP-2024-001",
+          "receivedDate": "2024-02-15",
+          "requestedEffectiveDate": "2024-03-01",
+          "channel": "AGENT"
+        },
+        "applicant": {
+          "firstName": "John",
+          "lastName": "Doe",
+          "dateOfBirth": "1958-06-15",
+          "state": "CA",
+          "zip": "90210",
+          "tobaccoUse": false,
+          "heightInches": 70,
+          "weightPounds": 180,
+          "partAEffectiveDate": "2023-06-01",
+          "partBEffectiveDate": "2023-06-01",
+          "currentlyOnMA": false,
+          "currentCoverageType": "NONE",
+          "medicareEligibilityDate": "2023-06-01"
+        },
+        "coverage": {
+          "requestedPlanLetter": "G",
+          "replacingCoverage": false,
+          "replacingCoverageType": "NONE",
+          "priorCreditableCoverageMonths": 0,
+          "gapSinceCreditableCoverageEndDays": 0
+        },
+        "giEvents": [],
+        "health": {
+          "conditions": [],
+          "medications": [],
+          "oxygenUse": false,
+          "adlAssistance": false,
+          "recentHospitalization": {
+            "occurred": false
+          }
+        }
+      }
+    }
+  }
+}
+
+===========================================
+
+TEST CASE 2: Guaranteed Issue - MA Termination (R-200)
+------------------------------------------------------
+Description: Applicant terminated Medicare Advantage plan within 63-day lookback window
+Expected Result: ACCEPT_NO_UW - Guaranteed Issue applies
+
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/call",
+  "params": {
+    "name": "evaluate_for_underwriting",
+    "arguments": {
+      "request": {
+        "application": {
+          "applicationId": "APP-2024-002",
+          "receivedDate": "2024-02-15",
+          "requestedEffectiveDate": "2024-03-01",
+          "channel": "BROKER"
+        },
+        "applicant": {
+          "firstName": "Jane",
+          "lastName": "Smith",
+          "dateOfBirth": "1955-03-20",
+          "state": "TX",
+          "zip": "75001",
+          "partAEffectiveDate": "2020-03-01",
+          "partBEffectiveDate": "2020-03-01",
+          "currentlyOnMA": false,
+          "currentCoverageType": "NONE",
+          "medicareEligibilityDate": "2020-03-01"
+        },
+        "coverage": {
+          "requestedPlanLetter": "N",
+          "replacingCoverage": false,
+          "replacingCoverageType": "NONE"
+        },
+        "giEvents": [
+          {
+            "type": "MA_PLAN_TERMINATION",
+            "triggeringDate": "2024-01-31"
+          }
+        ],
+        "health": {
+          "conditions": [],
+          "medications": []
+        }
+      }
+    }
+  }
+}
+
+===========================================
+
+TEST CASE 3: Medical Underwriting Required (R-400)
+--------------------------------------------------
+Description: Applicant outside open enrollment and no GI events
+Expected Result: ACCEPT_WITH_UW - Medical underwriting required
+
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "method": "tools/call",
+  "params": {
+    "name": "evaluate_for_underwriting",
+    "arguments": {
+      "request": {
+        "application": {
+          "applicationId": "APP-2024-003",
+          "receivedDate": "2024-02-15",
+          "requestedEffectiveDate": "2024-03-01",
+          "channel": "DIRECT"
+        },
+        "applicant": {
+          "firstName": "Robert",
+          "lastName": "Johnson",
+          "dateOfBirth": "1952-08-10",
+          "state": "FL",
+          "zip": "33101",
+          "tobaccoUse": true,
+          "heightInches": 68,
+          "weightPounds": 220,
+          "partAEffectiveDate": "2017-08-01",
+          "partBEffectiveDate": "2017-08-01",
+          "currentlyOnMA": false,
+          "currentCoverageType": "NONE",
+          "medicareEligibilityDate": "2017-08-01"
+        },
+        "coverage": {
+          "requestedPlanLetter": "G",
+          "replacingCoverage": false,
+          "replacingCoverageType": "NONE"
+        },
+        "giEvents": [],
+        "health": {
+          "conditions": ["Hypertension", "Type 2 Diabetes"],
+          "medications": ["Metformin", "Lisinopril"],
+          "oxygenUse": false,
+          "adlAssistance": false,
+          "recentHospitalization": {
+            "occurred": false
+          }
+        }
+      }
+    }
+  }
+}
+
+===========================================
+
+TEST CASE 4: Medicare Advantage Conflict (R-300)
+------------------------------------------------
+Description: Applicant currently on Medicare Advantage without GI event
+Expected Result: PENDED - Requires MA disenrollment proof
+
+{
+  "jsonrpc": "2.0",
+  "id": 4,
+  "method": "tools/call",
+  "params": {
+    "name": "evaluate_for_underwriting",
+    "arguments": {
+      "request": {
+        "application": {
+          "applicationId": "APP-2024-004",
+          "receivedDate": "2024-02-15",
+          "requestedEffectiveDate": "2024-03-01"
+        },
+        "applicant": {
+          "firstName": "Mary",
+          "lastName": "Williams",
+          "dateOfBirth": "1954-11-05",
+          "state": "NY",
+          "zip": "10001",
+          "partAEffectiveDate": "2019-11-01",
+          "partBEffectiveDate": "2019-11-01",
+          "currentlyOnMA": true,
+          "currentCoverageType": "MA",
+          "medicareEligibilityDate": "2019-11-01"
+        },
+        "coverage": {
+          "requestedPlanLetter": "F",
+          "replacingCoverage": true,
+          "replacingCoverageType": "MA"
+        },
+        "giEvents": []
+      }
+    }
+  }
+}
+
+===========================================
+
+TEST CASE 5: MACRA Restriction (R-700)
+--------------------------------------
+Description: Applicant eligible after 2020 requesting Plan F (MACRA-restricted)
+Expected Result: Plan F should be disallowed
+
+{
+  "jsonrpc": "2.0",
+  "id": 5,
+  "method": "tools/call",
+  "params": {
+    "name": "evaluate_for_underwriting",
+    "arguments": {
+      "request": {
+        "application": {
+          "applicationId": "APP-2024-005",
+          "receivedDate": "2024-02-15",
+          "requestedEffectiveDate": "2024-03-01"
+        },
+        "applicant": {
+          "firstName": "David",
+          "lastName": "Brown",
+          "dateOfBirth": "1958-01-15",
+          "state": "CA",
+          "partAEffectiveDate": "2023-01-01",
+          "partBEffectiveDate": "2023-01-01",
+          "currentlyOnMA": false,
+          "medicareEligibilityDate": "2023-01-01"
+        },
+        "coverage": {
+          "requestedPlanLetter": "F"
+        },
+        "giEvents": []
+      }
+    }
+  }
+}
+
+===========================================
+
+TEST CASE 6: Employer Group Coverage Ending (GI Event)
+------------------------------------------------------
+Description: Applicant losing employer group coverage (GI qualifying event)
+Expected Result: ACCEPT_NO_UW - Guaranteed Issue applies
+
+{
+  "jsonrpc": "2.0",
+  "id": 6,
+  "method": "tools/call",
+  "params": {
+    "name": "evaluate_for_underwriting",
+    "arguments": {
+      "request": {
+        "application": {
+          "applicationId": "APP-2024-006",
+          "receivedDate": "2024-02-15",
+          "requestedEffectiveDate": "2024-03-01"
+        },
+        "applicant": {
+          "firstName": "Patricia",
+          "lastName": "Davis",
+          "dateOfBirth": "1950-05-20",
+          "state": "IL",
+          "partAEffectiveDate": "2015-05-01",
+          "partBEffectiveDate": "2015-05-01",
+          "currentlyOnMA": false,
+          "currentCoverageType": "EMPLOYER_GROUP",
+          "medicareEligibilityDate": "2015-05-01"
+        },
+        "coverage": {
+          "requestedPlanLetter": "G",
+          "replacingCoverage": true,
+          "replacingCoverageType": "EMPLOYER_GROUP"
+        },
+        "giEvents": [
+          {
+            "type": "EMPLOYER_GROUP_ENDING",
+            "triggeringDate": "2024-01-31"
+          }
+        ]
+      }
+    }
+  }
+}
+
+===========================================

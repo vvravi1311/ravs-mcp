@@ -2,6 +2,9 @@ import json
 import base64
 import traceback
 from app.rag_tools import retrieve_context
+from app.uw_impl import evaluate_for_underwriting
+from app.uw_models import EvaluateRequest
+from app.description import uw_tool_description
 
 def lambda_handler(event, context):
     req_id = None
@@ -76,17 +79,41 @@ def lambda_handler(event, context):
                 "jsonrpc": "2.0",
                 "id": req_id,
                 "result": {
-                    "tools": [{
-                        "name": "retrieve_documents",
-                        "description": "Retrieve relevant documentation to help answer Insurance agents queries about Real-Time clause and Benefit lookup",
-                        "inputSchema": {
-                            "type": "object",
-                            "properties": {
-                                "query": {"type": "string"}
-                            },
-                            "required": ["query"]
+                    "tools": [
+                        {
+                            "name": "retrieve_documents",
+                            "description": "Retrieve relevant documentation to help answer Insurance agents queries about Real-Time clause and Benefit lookup",
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {
+                                    "query": {"type": "string"}
+                                },
+                                "required": ["query"]
+                            }
+                        },
+                        {
+                            "name": "evaluate_for_underwriting",
+                            "description": uw_tool_description,
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {
+                                    "request": {
+                                        "type": "object",
+                                        "properties": {
+                                            "application": {"type": "object"},
+                                            "applicant": {"type": "object"},
+                                            "coverage": {"type": "object"},
+                                            "giEvents": {"type": "array"},
+                                            "health": {"type": "object"},
+                                            "context": {"type": "object"}
+                                        },
+                                        "required": ["application", "applicant", "coverage"]
+                                    }
+                                },
+                                "required": ["request"]
+                            }
                         }
-                    }]
+                    ]
                 }
             }
 
@@ -120,6 +147,26 @@ def lambda_handler(event, context):
                         "content": [
                             {"type": "text", "text": serialized},
                             {"type": "text", "text": json.dumps(docs_dict, indent=2)}
+                        ]
+                    }
+                }
+
+                return {
+                    "statusCode": 200,
+                    "headers": {"Content-Type": "application/json"},
+                    "body": json.dumps(response)
+                }
+            
+            elif tool_name == 'evaluate_for_underwriting':
+                request_obj = EvaluateRequest(**arguments['request'])
+                result = evaluate_for_underwriting(request_obj)
+                
+                response = {
+                    "jsonrpc": "2.0",
+                    "id": req_id,
+                    "result": {
+                        "content": [
+                            {"type": "text", "text": json.dumps(result, indent=2)}
                         ]
                     }
                 }
