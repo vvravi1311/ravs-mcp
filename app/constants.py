@@ -19,7 +19,7 @@ def get_secret():
         get_secret_value_response = client.get_secret_value(
             SecretId=secret_name
         )
-        pprint(json.loads(get_secret_value_response['SecretString']))
+        # pprint(json.loads(get_secret_value_response['SecretString']))
     except ClientError as e:
         # For a list of exceptions thrown, see
         # https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
@@ -36,8 +36,8 @@ LANGSMITH_API_KEY = agent["LANGSMITH_API_KEY"]
 LANGSMITH_PROJECT = agent["LANGSMITH_PROJECT"]
 PINECONE_API_KEY = agent["PINECONE_API_KEY"]
 
-print(OPENAI_API_KEY, LANGSMITH_TRACING )
+# print(OPENAI_API_KEY, LANGSMITH_TRACING )
 
 GPT_EMBEDDING_MODEL="text-embedding-3-small"
 INDEX_NAME="medicare-docs"
-K=2
+K=3

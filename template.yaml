@@ -8,6 +8,8 @@ Parameters:
     Default: 'my-agent'
 
 Globals:
+  Api:
+    Name: ravs-mcp-api
   Function:
     Timeout: 120
     MemorySize: 1024
@@ -17,6 +19,7 @@ Resources:
   MCPServerFunction:
     Type: AWS::Serverless::Function
     Properties:
+      FunctionName: ravs-mcp-server
       CodeUri: .
       Handler: lambda_handler.lambda_handler
       Architectures:
@@ -27,7 +30,10 @@ Resources:
         - Statement:
           - Effect: Allow
             Action: secretsmanager:GetSecretValue
-            Resource: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${SecretName}*'
+            Resource: '*'
+          - Effect: Allow
+            Action: secretsmanager:GetSecretValue
+            Resource: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${SecretName}-*'
       Events:
         MCPApi:
           Type: Api
@@ -45,7 +51,7 @@ Resources:
     DependsOn:
       - ServerlessRestApiProdStage
     Properties:
-      Name: MCPServerApiKey
+      Name: !Sub '${AWS::StackName}-ApiKey'
       Enabled: true
 
   MCPUsagePlan:
