@@ -1,10 +1,10 @@
 import json
 import base64
 import traceback
-from app.rag_tools import retrieve_context
+from app.rag_tools import retrieve_context, QueryDetails
 from app.uw_impl import evaluate_for_underwriting
 from app.uw_models import EvaluateRequest
-from app.description import uw_tool_description
+from app.description import uw_tool_description,rag_tool_description
 
 def lambda_handler(event, context):
     req_id = None
@@ -82,13 +82,19 @@ def lambda_handler(event, context):
                     "tools": [
                         {
                             "name": "retrieve_documents",
-                            "description": "Retrieve relevant documentation to help answer Insurance agents queries about Real-Time clause and Benefit lookup",
+                            "description": rag_tool_description,
                             "inputSchema": {
                                 "type": "object",
                                 "properties": {
-                                    "query": {"type": "string"}
+                                    "request": {
+                                        "type": "object",
+                                        "properties": {
+                                            "user_query": {"type": "string"}
+                                        },
+                                        "required": ["user_query"]
+                                    }
                                 },
-                                "required": ["query"]
+                                "required": ["request"]
                             }
                         },
                         {
@@ -107,7 +113,7 @@ def lambda_handler(event, context):
                                             "health": {"type": "object"},
                                             "context": {"type": "object"}
                                         },
-                                        "required": ["application", "applicant", "coverage"]
+                                        "required": ["application", "applicant"]
                                     }
                                 },
                                 "required": ["request"]
@@ -129,17 +135,10 @@ def lambda_handler(event, context):
             tool_name = params.get('name')
             arguments = params.get('arguments', {})
 
-            print("***********************************************************   in tool calls   **********************")
             if tool_name == 'retrieve_documents':
-                import time
-                start = time.time()
-                print("***********************************************************   in retrieve_documents   **********")
-                serialized, docs = retrieve_context(arguments['query'])
-                print(f"*** retrieve_context took {time.time() - start:.2f}s ***")
-                print("***********************************************************   docs retreived   **********")
-                
+                query_obj = QueryDetails(user_query=arguments['request']['user_query'])
+                serialized, docs = retrieve_context(query_obj)
                 docs_dict = [{"page_content": doc.page_content, "metadata": doc.metadata} for doc in docs]
-                
                 response = {
                     "jsonrpc": "2.0",
                     "id": req_id,

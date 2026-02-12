@@ -1,3 +1,5 @@
+from app.rag_tools import retrieve_context
+
 uw_tool_description = """Evaluate a Medicare Supplement (Medigap) application and generate a complete underwriting decision.
 
     This tool analyzes eligibility for Medicare Supplement insurance based on federal regulations,
@@ -94,3 +96,49 @@ uw_tool_description = """Evaluate a Medicare Supplement (Medigap) application an
     - R-600: State-specific continuous GI protections
     - R-700: MACRA restrictions (Plans C/F unavailable for Medicare-eligible after 2020)
     """
+
+
+rag_tool_description="""Retrieve relevant Medicare Supplement insurance documentation using semantic search.
+
+Use this tool to answer questions about Medicare Supplement plans, benefits, coverage, and policy details.
+
+Input Structure:
+----------------
+{
+    "user_query": "string (required) - Natural language question from insurance agent"
+}
+
+Example Request:
+---------------
+{
+    "user_query": "What does Plan N cover?"
+}
+
+Other Example Queries:
+- "What are the differences between Plan G and Plan N?"
+- "Does Plan F cover Part B deductible?"
+
+Example Response:
+-----------------
+Returns tuple: (serialized_text: str, documents: List[Document])
+
+serializedtext:
+"Source: medicare-plan-n-benefits.pdf
+
+Content: Plan N covers Medicare Part A coinsurance and hospital costs up to an additional 365 days after Medicare benefits are used up. It also covers Medicare Part B coinsurance or copayment, with the exception of up to $20 copayment for office visits and up to $50 copayment for emergency room visits.
+
+Source: medicare-plans-comparison.pdf
+
+Content: Plan N provides comprehensive coverage similar to Plan G but requires small copayments for office visits ($20) and emergency room visits ($50 if not admitted)."
+
+documents:
+[
+    Document(page_content="Plan N covers...", metadata={"source": "medicare-plan-n-benefits.pdf"}),
+    Document(page_content="Plan N provides...", metadata={"source": "medicare-plans-comparison.pdf"})
+]
+
+Technical Details:
+- Retrieves top 3 most relevant documents
+- Uses semantic similarity search
+- Results are cached for performance
+"""

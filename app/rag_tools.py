@@ -5,9 +5,17 @@ from langchain_openai import OpenAIEmbeddings
 from app.constants import GPT_EMBEDDING_MODEL,INDEX_NAME,PINECONE_API_KEY,OPENAI_API_KEY,K
 from pprint import pprint
 from functools import lru_cache
+from pydantic import BaseModel
 
 _embeddings = None
 _vectorstore = None
+
+
+class QueryDetails(BaseModel):
+    user_query: str
+    
+    class Config:
+        frozen = True
 
 def get_vectorstore():
     global _embeddings, _vectorstore
@@ -17,11 +25,11 @@ def get_vectorstore():
     return _vectorstore
 
 @lru_cache(maxsize=100)
-def retrieve_context(query: str) -> Tuple[str, List[Document]]:
-    """Retrieve relevant documentation to help answer answers Insurance agents' queries about Real-Time clause and Benefit lookup."""
+def retrieve_context(retreiver_str: QueryDetails) -> Tuple[str, List[Document]]:
+
     print("***********************************************************   in retrieve_context function   **********")
     vectorstore = get_vectorstore()
-    retrieved_docs = vectorstore.as_retriever(search_kwargs={"k": K}).invoke(query)
+    retrieved_docs = vectorstore.as_retriever(search_kwargs={"k": K}).invoke(retreiver_str.user_query)
     print("***********************************************************   in retreived docs successfully   **********")
     # Serialize documents for the model
     serialized = "\n\n".join(
